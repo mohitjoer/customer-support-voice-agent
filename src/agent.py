@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 
 from dotenv import load_dotenv
-from livekit import rtc
+from livekit import rtc, api
 from livekit.agents import (
     Agent,
     AgentServer,
@@ -24,6 +24,12 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
+
+# LiveKit and Twilio Configuration
+LIVEKIT_URL = os.getenv("LIVEKIT_URL")
+LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
+LIVEKIT_TRUNK_ID = os.getenv("LIVEKIT_TUNK_ID")  
 
 # Ensure logs directory exists and configure a dedicated file logger for tool calls
 LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
