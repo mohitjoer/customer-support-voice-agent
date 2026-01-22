@@ -20,3 +20,5 @@
 {"timestamp": "2026-01-22T03:31:48.642473Z", "tool": "cancel_order", "order_id": "HT1002", "result": {"order_id": "HT1002", "status": "Cancelled"}}
 2026-01-22 09:02:38,089 - INFO - initiate_refund called for HT1004
 {"timestamp": "2026-01-22T03:32:38.092778Z", "tool": "initiate_refund", "order_id": "HT1004", "result": {"order_id": "HT1004", "refund": {"status": "Initiated", "amount": 0.0}}}
+2026-01-22 10:23:25,482 - INFO - track_shipment called for HT1003
+{"timestamp": "2026-01-22T04:53:25.485420Z", "tool": "track_shipment", "order_id": "HT1003", "result": {"carrier": "FastShip", "tracking": "FS1003", "status": "Delivered"}}

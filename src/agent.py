@@ -83,7 +83,7 @@ class Assistant(Agent):
             instructions="""
 You are a professional voice-based customer support assistant for High Time Store, running inside a LiveKit voice agent.
 
-As soon as the call connects, greet the user with a short and polite welcome on behalf of High Time Store.
+As soon as the user connects, greet the user with a short and polite welcome on behalf of High Time Store.
 
 The user interacts with you through real-time speech.
 Your responses must be short, natural,smooth, and suitable for spoken conversation.
@@ -413,6 +413,9 @@ async def my_agent(ctx: JobContext):
 
     # Join the room and connect to the user
     await ctx.connect()
+    
+    # Send an initial greeting message
+    await session.say("Hello! Welcome to High Time Store customer support. How can I help you today?")
 
 
 if __name__ == "__main__":
