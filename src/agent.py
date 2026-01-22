@@ -130,9 +130,6 @@ Professional, calm, efficient, and friendly.
         )
 
 
-
-
-
     @function_tool
     async def check_order_status(self, context: RunContext, order_id: str):
         """Read-only tool: Return order status and basic details for the given order_id."""
