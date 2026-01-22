@@ -131,22 +131,6 @@ Professional, calm, efficient, and friendly.
 
 
 
-    # To add tools, use the @function_tool decorator.
-    # Here's an example that adds a simple weather tool.
-    # You also have to add `from livekit.agents import function_tool, RunContext` to the top of this file
-    # @function_tool
-    # async def lookup_weather(self, context: RunContext, location: str):
-    #     """Use this tool to look up current weather information in the given location.
-    #
-    #     If the location is not supported by the weather service, the tool will indicate this. You must tell the user the location's weather is unavailable.
-    #
-    #     Args:
-    #         location: The location to look up weather information for (e.g. city name)
-    #     """
-    #
-    #     logger.info(f"Looking up weather for {location}")
-    #
-    #     return "sunny with a temperature of 70 degrees."
 
 
     @function_tool
@@ -228,6 +212,163 @@ Professional, calm, efficient, and friendly.
         write_tool_log("refund_status", key, result)
         return result
 
+    @function_tool
+    async def cancel_order(self, context: RunContext, order_id: str, email: str):
+        """Sensitive tool: Cancel an order after email verification."""
+        logger.info("cancel_order called for %s", order_id)
+        key = normalize_order_id(order_id)
+        order = ORDERS.get(key)
+
+        if not order:
+            result = f"No order found with ID {key}."
+            write_tool_log("cancel_order", key, {"error": result})
+            return result
+
+        if order.get("email") != email:
+            result = "Email verification failed. Order cancellation denied."
+            write_tool_log("cancel_order", key, {"error": result})
+            return result
+
+        order["status"] = "Cancelled"
+        result = {"order_id": key, "status": "Cancelled"}
+        write_tool_log("cancel_order", key, result)
+        return result
+
+
+    @function_tool
+    async def modify_order(
+        self,
+        context: RunContext,
+        order_id: str,
+        email: str,
+        updates: str,
+    ):
+        """Sensitive tool: Modify order details after email verification.
+        
+        Args:
+            order_id: The order ID to modify
+            email: Email address for verification
+            updates: JSON string describing changes (e.g., '{"address": "123 New St", "quantity": 2}')
+        """
+        logger.info("modify_order called for %s", order_id)
+        key = normalize_order_id(order_id)
+        order = ORDERS.get(key)
+
+        if not order:
+            result = f"No order found with ID {key}."
+            write_tool_log("modify_order", key, {"error": result})
+            return result
+
+        if order.get("email") != email:
+            result = "Email verification failed. Order modification denied."
+            write_tool_log("modify_order", key, {"error": result})
+            return result
+
+        # Parse updates from JSON string
+        try:
+            updates_dict = json.loads(updates) if isinstance(updates, str) else updates
+        except json.JSONDecodeError:
+            result = "Invalid updates format. Please provide valid JSON."
+            write_tool_log("modify_order", key, {"error": result})
+            return result
+
+        order.update(updates_dict)
+        result = {"order_id": key, "updated_fields": updates_dict}
+        write_tool_log("modify_order", key, result)
+        return result
+
+
+    @function_tool
+    async def reschedule_delivery(
+        self,
+        context: RunContext,
+        order_id: str,
+        email: str,
+        new_delivery_date: str,
+    ):
+        """Sensitive tool: Reschedule delivery after email verification."""
+        logger.info("reschedule_delivery called for %s", order_id)
+        key = normalize_order_id(order_id)
+        order = ORDERS.get(key)
+
+        if not order:
+            result = f"No order found with ID {key}."
+            write_tool_log("reschedule_delivery", key, {"error": result})
+            return result
+
+        if order.get("email") != email:
+            result = "Email verification failed. Delivery reschedule denied."
+            write_tool_log("reschedule_delivery", key, {"error": result})
+            return result
+
+        order["delivery_date"] = new_delivery_date
+        result = {"order_id": key, "delivery_date": new_delivery_date}
+        write_tool_log("reschedule_delivery", key, result)
+        return result
+
+
+    @function_tool
+    async def initiate_refund(
+        self,
+        context: RunContext,
+        order_id: str,
+        email: str,
+    ):
+        """Sensitive tool: Initiate refund after email verification."""
+        logger.info("initiate_refund called for %s", order_id)
+        key = normalize_order_id(order_id)
+        order = ORDERS.get(key)
+
+        if not order:
+            result = f"No order found with ID {key}."
+            write_tool_log("initiate_refund", key, {"error": result})
+            return result
+
+        if order.get("email") != email:
+            result = "Email verification failed. Refund initiation denied."
+            write_tool_log("initiate_refund", key, {"error": result})
+            return result
+
+        refund = {
+            "status": "Initiated",
+            "amount": order.get("payment", {}).get("amount", 0.0),
+        }
+        order["refund"] = refund
+        result = {"order_id": key, "refund": refund}
+        write_tool_log("initiate_refund", key, result)
+        return result
+
+
+    @function_tool
+    async def change_payment_method(
+        self,
+        context: RunContext,
+        order_id: str,
+        email: str,
+        new_payment_method: str,
+    ):
+        """Sensitive tool: Change payment method after email verification."""
+        logger.info("change_payment_method called for %s", order_id)
+        key = normalize_order_id(order_id)
+        order = ORDERS.get(key)
+
+        if not order:
+            result = f"No order found with ID {key}."
+            write_tool_log("change_payment_method", key, {"error": result})
+            return result
+
+        if order.get("email") != email:
+            result = "Email verification failed. Payment method change denied."
+            write_tool_log("change_payment_method", key, {"error": result})
+            return result
+
+        order["payment"]["method"] = new_payment_method
+        result = {
+            "order_id": key,
+            "payment_method": new_payment_method,
+        }
+        write_tool_log("change_payment_method", key, result)
+        return result
 
 server = AgentServer()
 

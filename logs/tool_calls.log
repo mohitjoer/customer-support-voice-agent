@@ -16,3 +16,7 @@
 {"timestamp": "2026-01-22T02:56:12.138349Z", "tool": "check_order_status", "order_id": "HT1001", "result": {"order_id": "HT1001", "status": "Processing", "items": [{"sku": "TSHIRT-RED", "qty": 1, "name": "Red T-Shirt"}]}}
 2026-01-22 08:26:40,146 - INFO - check_order_status called for ht1002
 {"timestamp": "2026-01-22T02:56:40.151274Z", "tool": "check_order_status", "order_id": "HT1002", "result": {"order_id": "HT1002", "status": "Shipped", "items": [{"sku": "MUG-LOGO", "qty": 2, "name": "Logo Mug"}]}}
+2026-01-22 09:01:48,638 - INFO - cancel_order called for HT1002
+{"timestamp": "2026-01-22T03:31:48.642473Z", "tool": "cancel_order", "order_id": "HT1002", "result": {"order_id": "HT1002", "status": "Cancelled"}}
+2026-01-22 09:02:38,089 - INFO - initiate_refund called for HT1004
+{"timestamp": "2026-01-22T03:32:38.092778Z", "tool": "initiate_refund", "order_id": "HT1004", "result": {"order_id": "HT1004", "refund": {"status": "Initiated", "amount": 0.0}}}
