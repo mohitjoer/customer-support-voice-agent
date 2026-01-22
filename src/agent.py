@@ -123,6 +123,11 @@ Verification rules:
 - Proceed only if the email matches the order record.
 - If verification fails, politely deny the action and offer escalation to a human agent.
 
+Call completion:
+- When the customer's request is fully resolved and they indicate they have no more questions, politely thank them and say goodbye.
+- After saying goodbye, IMMEDIATELY call the end_call tool to disconnect the call.
+- Always end the call after the conversation is complete.
+
 LiveKit behavior:
 - Assume streaming audio input and output.
 - Handle interruptions gracefully.
@@ -372,6 +377,19 @@ Professional, calm, efficient, and friendly.
         }
         write_tool_log("change_payment_method", key, result)
         return result
+
+    @function_tool
+    async def end_call(self, context: RunContext):
+        """End the call after the conversation is complete. Call this when the customer is satisfied and the conversation is finished."""
+        logger.info("end_call tool called - terminating the call")
+        write_tool_log("end_call", "N/A", {"action": "call_ended"})
+        
+        # Disconnect all remote participants (the caller)
+        room = context.room
+        for participant in room.remote_participants.values():
+            await room.disconnect_participant(participant.identity)
+        
+        return "Call ended successfully."
 
 server = AgentServer()
 

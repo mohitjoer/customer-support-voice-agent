@@ -22,3 +22,9 @@
 {"timestamp": "2026-01-22T03:32:38.092778Z", "tool": "initiate_refund", "order_id": "HT1004", "result": {"order_id": "HT1004", "refund": {"status": "Initiated", "amount": 0.0}}}
 2026-01-22 10:23:25,482 - INFO - track_shipment called for HT1003
 {"timestamp": "2026-01-22T04:53:25.485420Z", "tool": "track_shipment", "order_id": "HT1003", "result": {"carrier": "FastShip", "tracking": "FS1003", "status": "Delivered"}}
+2026-01-22 12:56:11,722 - INFO - check_order_status called for Ht1002
+{"timestamp": "2026-01-22T07:26:11.723957Z", "tool": "check_order_status", "order_id": "HT1002", "result": {"order_id": "HT1002", "status": "Shipped", "items": [{"sku": "MUG-LOGO", "qty": 2, "name": "Logo Mug"}]}}
+2026-01-22 12:56:28,624 - INFO - track_shipment called for HT1002
+{"timestamp": "2026-01-22T07:26:28.625707Z", "tool": "track_shipment", "order_id": "HT1002", "result": {"carrier": "ShipQuick", "tracking": "SQ1002", "status": "In transit"}}
+2026-01-22 12:57:07,414 - INFO - cancel_order called for HT1002
+{"timestamp": "2026-01-22T07:27:07.416556Z", "tool": "cancel_order", "order_id": "HT1002", "result": {"order_id": "HT1002", "status": "Cancelled"}}
