@@ -43,9 +43,22 @@ if not any(isinstance(h, logging.FileHandler) and getattr(h, "baseFilename", Non
     fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(fh)
 
+# Import MongoDB logger
+try:
+    from .mongodb_logger import get_mongo_logger, log_to_mongodb
+except ImportError:
+    try:
+        from mongodb_logger import get_mongo_logger, log_to_mongodb
+    except ImportError:
+        # MongoDB logging not available
+        def log_to_mongodb(*args, **kwargs):
+            return False
+        def get_mongo_logger():
+            return None
 
-def write_tool_log(tool_name: str, order_id: str, result: dict) -> None:
-    """Append a JSON line summarizing a tool call to the tool log file."""
+
+def write_tool_log(tool_name: str, order_id: str, result: dict, room_name: str = None, participant_identity: str = None) -> None:
+    """Append a JSON line summarizing a tool call to the tool log file and MongoDB."""
     entry = {
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "tool": tool_name,
@@ -53,10 +66,21 @@ def write_tool_log(tool_name: str, order_id: str, result: dict) -> None:
         "result": result,
     }
     try:
+        # Write to file
         with open(TOOL_LOG_PATH, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        
+        # Write to MongoDB
+        log_to_mongodb(
+            tool_name=tool_name,
+            order_id=order_id,
+            result=result,
+            room_name=room_name,
+            participant_identity=participant_identity,
+        )
     except Exception:
         logger.exception("Failed to write tool log")
+
 
 
 def normalize_order_id(raw: str) -> str:
@@ -146,7 +170,11 @@ Professional, calm, efficient, and friendly.
         """Read-only tool: Return order status and basic details for the given order_id."""
         logger.info("check_order_status called for %s", order_id)
         key = normalize_order_id(order_id)
-        order = ORDERS.get(key)
+        
+        # Fetch order from MongoDB
+        mongo_logger = get_mongo_logger()
+        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        
         if not order:
             result = f"No order found with ID {key}."
             write_tool_log("check_order_status", key, {"error": result})
@@ -165,7 +193,11 @@ Professional, calm, efficient, and friendly.
         """Read-only tool: Return shipment tracking information for the order."""
         logger.info("track_shipment called for %s", order_id)
         key = normalize_order_id(order_id)
-        order = ORDERS.get(key)
+        
+        # Fetch order from MongoDB
+        mongo_logger = get_mongo_logger()
+        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        
         if not order:
             result = f"No order found with ID {key}."
             write_tool_log("track_shipment", key, {"error": result})
@@ -180,7 +212,11 @@ Professional, calm, efficient, and friendly.
         """Read-only tool: Return payment status and method details for the order."""
         logger.info("payment_status called for %s", order_id)
         key = normalize_order_id(order_id)
-        order = ORDERS.get(key)
+        
+        # Fetch order from MongoDB
+        mongo_logger = get_mongo_logger()
+        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        
         if not order:
             result = f"No order found with ID {key}."
             write_tool_log("payment_status", key, {"error": result})
@@ -195,7 +231,11 @@ Professional, calm, efficient, and friendly.
         """Read-only tool: Return invoice/receipt information for the order."""
         logger.info("invoice_request called for %s", order_id)
         key = normalize_order_id(order_id)
-        order = ORDERS.get(key)
+        
+        # Fetch order from MongoDB
+        mongo_logger = get_mongo_logger()
+        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        
         if not order:
             result = f"No order found with ID {key}."
             write_tool_log("invoice_request", key, {"error": result})
@@ -210,7 +250,11 @@ Professional, calm, efficient, and friendly.
         """Read-only tool: Return refund status for the order."""
         logger.info("refund_status called for %s", order_id)
         key = normalize_order_id(order_id)
-        order = ORDERS.get(key)
+        
+        # Fetch order from MongoDB
+        mongo_logger = get_mongo_logger()
+        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        
         if not order:
             result = f"No order found with ID {key}."
             write_tool_log("refund_status", key, {"error": result})
@@ -225,7 +269,10 @@ Professional, calm, efficient, and friendly.
         """Sensitive tool: Cancel an order after email verification."""
         logger.info("cancel_order called for %s", order_id)
         key = normalize_order_id(order_id)
-        order = ORDERS.get(key)
+        
+        # Fetch order from MongoDB
+        mongo_logger = get_mongo_logger()
+        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
 
         if not order:
             result = f"No order found with ID {key}."
@@ -260,7 +307,10 @@ Professional, calm, efficient, and friendly.
         """
         logger.info("modify_order called for %s", order_id)
         key = normalize_order_id(order_id)
-        order = ORDERS.get(key)
+        
+        # Fetch order from MongoDB (read-only)
+        mongo_logger = get_mongo_logger()
+        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
 
         if not order:
             result = f"No order found with ID {key}."
@@ -297,7 +347,10 @@ Professional, calm, efficient, and friendly.
         """Sensitive tool: Reschedule delivery after email verification."""
         logger.info("reschedule_delivery called for %s", order_id)
         key = normalize_order_id(order_id)
-        order = ORDERS.get(key)
+        
+        # Fetch order from MongoDB (read-only)
+        mongo_logger = get_mongo_logger()
+        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
 
         if not order:
             result = f"No order found with ID {key}."
@@ -325,7 +378,10 @@ Professional, calm, efficient, and friendly.
         """Sensitive tool: Initiate refund after email verification."""
         logger.info("initiate_refund called for %s", order_id)
         key = normalize_order_id(order_id)
-        order = ORDERS.get(key)
+        
+        # Fetch order from MongoDB (read-only)
+        mongo_logger = get_mongo_logger()
+        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
 
         if not order:
             result = f"No order found with ID {key}."
@@ -358,7 +414,10 @@ Professional, calm, efficient, and friendly.
         """Sensitive tool: Change payment method after email verification."""
         logger.info("change_payment_method called for %s", order_id)
         key = normalize_order_id(order_id)
-        order = ORDERS.get(key)
+        
+        # Fetch order from MongoDB (read-only)
+        mongo_logger = get_mongo_logger()
+        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
 
         if not order:
             result = f"No order found with ID {key}."
@@ -408,6 +467,12 @@ async def my_agent(ctx: JobContext):
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
+    
+    # Track call start time for duration calculation
+    call_start_time = datetime.utcnow()
+    room_name = ctx.room.name
+    participant_identity = None
+    participant_phone = None
 
     # Set up a voice AI pipeline using OpenAI, Cartesia, AssemblyAI, and the LiveKit turn detector
     session = AgentSession(
@@ -438,8 +503,66 @@ async def my_agent(ctx: JobContext):
     # Join the room and connect to the user
     await ctx.connect()
     
+    # Wait for participants and get their info
+    try:
+        # Get first remote participant
+        if ctx.room.remote_participants:
+            first_participant = list(ctx.room.remote_participants.values())[0]
+            participant_identity = first_participant.identity
+            # Extract phone number from identity (format: caller-919829007613)
+            if participant_identity and participant_identity.startswith("caller-"):
+                participant_phone = "+" + participant_identity.replace("caller-", "")
+    except Exception as e:
+        logger.error(f"Error getting participant info: {e}")
+    
+    # Log call session start to MongoDB
+    mongo_logger = get_mongo_logger()
+    if mongo_logger and mongo_logger.enabled:
+        mongo_logger.log_conversation_event(
+            room_name=room_name,
+            event_type="call_started",
+            event_data={
+                "participant_identity": participant_identity,
+                "participant_phone": participant_phone,
+                "timestamp": call_start_time.isoformat(),
+            }
+        )
+    
     # Send an initial greeting message
     await session.say("Hello! Welcome to High Time Store customer support. How can I help you today?")
+    
+    # Log greeting event
+    if mongo_logger and mongo_logger.enabled:
+        mongo_logger.log_conversation_event(
+            room_name=room_name,
+            event_type="greeting_sent",
+            event_data={"message": "Hello! Welcome to High Time Store customer support. How can I help you today?"}
+        )
+    
+    # Wait for session to complete
+    try:
+        await session.wait()
+    except Exception as e:
+        logger.error(f"Session error: {e}")
+    finally:
+        # Calculate call duration
+        call_end_time = datetime.utcnow()
+        call_duration = (call_end_time - call_start_time).total_seconds()
+        
+        # Log call session completion to MongoDB
+        if mongo_logger and mongo_logger.enabled:
+            mongo_logger.log_call_session(
+                room_name=room_name,
+                participant_identity=participant_identity or "unknown",
+                participant_phone=participant_phone or "unknown",
+                call_status="completed",
+                call_duration=call_duration,
+                disconnect_reason="normal",
+                metadata={
+                    "call_start": call_start_time.isoformat(),
+                    "call_end": call_end_time.isoformat(),
+                }
+            )
 
 
 if __name__ == "__main__":
