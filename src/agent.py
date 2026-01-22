@@ -1,4 +1,8 @@
 import logging
+import os
+import json
+import re
+from datetime import datetime
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -8,6 +12,8 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
+    function_tool,
+    RunContext,
     cli,
     inference,
     room_io,
@@ -18,6 +24,58 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
+
+# Ensure logs directory exists and configure a dedicated file logger for tool calls
+LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
+os.makedirs(LOGS_DIR, exist_ok=True)
+TOOL_LOG_PATH = os.path.join(LOGS_DIR, "tool_calls.log")
+
+# Add a file handler to the module logger that writes tool call summaries
+if not any(isinstance(h, logging.FileHandler) and getattr(h, "baseFilename", None) == TOOL_LOG_PATH for h in logger.handlers):
+    fh = logging.FileHandler(TOOL_LOG_PATH)
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(fh)
+
+
+def write_tool_log(tool_name: str, order_id: str, result: dict) -> None:
+    """Append a JSON line summarizing a tool call to the tool log file."""
+    entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "tool": tool_name,
+        "order_id": order_id,
+        "result": result,
+    }
+    try:
+        with open(TOOL_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        logger.exception("Failed to write tool log")
+
+
+def normalize_order_id(raw: str) -> str:
+    """Normalize spoken/typed order IDs to canonical uppercase alphanumeric form.
+
+    Examples:
+      "ht one zero zero four" -> "HT1004"
+      "ht-1004" -> "HT1004"
+      "ht1004" -> "HT1004"
+    """
+    if not raw:
+        return ""
+    # Keep only alphanumeric characters
+    s = re.sub(r"[^0-9A-Za-z]", "", raw)
+    return s.upper()
+
+# Ensure ORDERS is defined at module level so linters/IDE can see the name.
+ORDERS: dict = {}
+try:
+    from .fake_data import ORDERS  # type: ignore
+except Exception:
+    try:
+        from fake_data import ORDERS  # type: ignore
+    except Exception:
+        ORDERS = {}
 
 class Assistant(Agent):
     def __init__(self) -> None:
@@ -91,6 +149,86 @@ Professional, calm, efficient, and friendly.
     #     return "sunny with a temperature of 70 degrees."
 
 
+    @function_tool
+    async def check_order_status(self, context: RunContext, order_id: str):
+        """Read-only tool: Return order status and basic details for the given order_id."""
+        logger.info("check_order_status called for %s", order_id)
+        key = normalize_order_id(order_id)
+        order = ORDERS.get(key)
+        if not order:
+            result = f"No order found with ID {key}."
+            write_tool_log("check_order_status", key, {"error": result})
+            return result
+
+        result = {
+            "order_id": order["order_id"],
+            "status": order["status"],
+            "items": order.get("items", []),
+        }
+        write_tool_log("check_order_status", key, result)
+        return result
+
+    @function_tool
+    async def track_shipment(self, context: RunContext, order_id: str):
+        """Read-only tool: Return shipment tracking information for the order."""
+        logger.info("track_shipment called for %s", order_id)
+        key = normalize_order_id(order_id)
+        order = ORDERS.get(key)
+        if not order:
+            result = f"No order found with ID {key}."
+            write_tool_log("track_shipment", key, {"error": result})
+            return result
+
+        result = order.get("shipment", {"status": "Unknown"})
+        write_tool_log("track_shipment", key, result)
+        return result
+
+    @function_tool
+    async def payment_status(self, context: RunContext, order_id: str):
+        """Read-only tool: Return payment status and method details for the order."""
+        logger.info("payment_status called for %s", order_id)
+        key = normalize_order_id(order_id)
+        order = ORDERS.get(key)
+        if not order:
+            result = f"No order found with ID {key}."
+            write_tool_log("payment_status", key, {"error": result})
+            return result
+
+        result = order.get("payment", {"status": "Unknown"})
+        write_tool_log("payment_status", key, result)
+        return result
+
+    @function_tool
+    async def invoice_request(self, context: RunContext, order_id: str):
+        """Read-only tool: Return invoice/receipt information for the order."""
+        logger.info("invoice_request called for %s", order_id)
+        key = normalize_order_id(order_id)
+        order = ORDERS.get(key)
+        if not order:
+            result = f"No order found with ID {key}."
+            write_tool_log("invoice_request", key, {"error": result})
+            return result
+
+        result = order.get("invoice", {"error": "No invoice available"})
+        write_tool_log("invoice_request", key, result)
+        return result
+
+    @function_tool
+    async def refund_status(self, context: RunContext, order_id: str):
+        """Read-only tool: Return refund status for the order."""
+        logger.info("refund_status called for %s", order_id)
+        key = normalize_order_id(order_id)
+        order = ORDERS.get(key)
+        if not order:
+            result = f"No order found with ID {key}."
+            write_tool_log("refund_status", key, {"error": result})
+            return result
+
+        result = order.get("refund", {"status": "None", "amount": 0.0})
+        write_tool_log("refund_status", key, result)
+        return result
+
+
 server = AgentServer()
 
 
@@ -111,43 +249,16 @@ async def my_agent(ctx: JobContext):
 
     # Set up a voice AI pipeline using OpenAI, Cartesia, AssemblyAI, and the LiveKit turn detector
     session = AgentSession(
-        # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
-        # See all available models at https://docs.livekit.io/agents/models/stt/
         stt=inference.STT(model="assemblyai/universal-streaming", language="en"),
-        # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
-        # See all available models at https://docs.livekit.io/agents/models/llm/
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
-        # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
-        # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
         tts=inference.TTS(
             model="cartesia/sonic-3", voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
         ),
-        # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
-        # See more at https://docs.livekit.io/agents/build/turns
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
-        # allow the LLM to generate a response while waiting for the end of turn
-        # See more at https://docs.livekit.io/agents/build/audio/#preemptive-generation
         preemptive_generation=True,
     )
 
-    # To use a realtime model instead of a voice pipeline, use the following session setup instead.
-    # (Note: This is for the OpenAI Realtime API. For other providers, see https://docs.livekit.io/agents/models/realtime/))
-    # 1. Install livekit-agents[openai]
-    # 2. Set OPENAI_API_KEY in .env.local
-    # 3. Add `from livekit.plugins import openai` to the top of this file
-    # 4. Use the following session setup instead of the version above
-    # session = AgentSession(
-    #     llm=openai.realtime.RealtimeModel(voice="marin")
-    # )
-
-    # # Add a virtual avatar to the session, if desired
-    # # For other providers, see https://docs.livekit.io/agents/models/avatar/
-    # avatar = hedra.AvatarSession(
-    #   avatar_id="...",  # See https://docs.livekit.io/agents/models/avatar/plugins/hedra
-    # )
-    # # Start the avatar and wait for it to join
-    # await avatar.start(session, room=ctx.room)
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
