@@ -28,3 +28,31 @@
 {"timestamp": "2026-01-22T07:26:28.625707Z", "tool": "track_shipment", "order_id": "HT1002", "result": {"carrier": "ShipQuick", "tracking": "SQ1002", "status": "In transit"}}
 2026-01-22 12:57:07,414 - INFO - cancel_order called for HT1002
 {"timestamp": "2026-01-22T07:27:07.416556Z", "tool": "cancel_order", "order_id": "HT1002", "result": {"order_id": "HT1002", "status": "Cancelled"}}
+2026-01-22 14:04:31,786 - ERROR - Session error: 'AgentSession' object has no attribute 'wait'
+2026-01-22 14:04:46,831 - INFO - check_order_status called for Ht1001
+{"timestamp": "2026-01-22T08:34:46.878183Z", "tool": "check_order_status", "order_id": "HT1001", "result": {"order_id": "HT1001", "status": "Processing", "items": [{"sku": "TSHIRT-RED", "qty": 1, "name": "Red T-Shirt"}]}}
+2026-01-22 14:05:25,306 - INFO - cancel_order called for HT1001
+{"timestamp": "2026-01-22T08:35:25.449847Z", "tool": "cancel_order", "order_id": "HT1001", "result": {"error": "Email verification failed. Order cancellation denied."}}
+2026-01-22 19:14:08,768 - ERROR - Session error: 'AgentSession' object has no attribute 'wait'
+2026-01-22 19:15:20,043 - ERROR - Session error: 'AgentSession' object has no attribute 'wait'
+2026-01-22 19:21:57,896 - ERROR - Session error: 'AgentSession' object has no attribute 'wait'
+2026-01-22 19:24:07,547 - ERROR - Session error: 'AgentSession' object has no attribute 'wait'
+2026-01-22 19:24:21,552 - ERROR - Session error: 'AgentSession' object has no attribute 'wait'
+2026-01-22 19:24:26,454 - INFO - check_order_status called for ht1001
+{"timestamp": "2026-01-22T13:54:26.544418Z", "tool": "check_order_status", "order_id": "HT1001", "result": {"order_id": "HT1001", "status": "Processing", "items": [{"sku": "TSHIRT-RED", "qty": 1, "name": "Red T-Shirt"}]}}
+2026-01-22 19:24:45,462 - INFO - track_shipment called for HT1001
+{"timestamp": "2026-01-22T13:54:45.521217Z", "tool": "track_shipment", "order_id": "HT1001", "result": {"carrier": "FastShip", "tracking": "FS1001", "status": "Label created"}}
+2026-01-22 19:25:32,026 - INFO - cancel_order called for HT1001
+{"timestamp": "2026-01-22T13:55:32.138789Z", "tool": "cancel_order", "order_id": "HT1001", "result": {"error": "Email verification failed. Order cancellation denied."}}
+2026-01-22 19:25:59,618 - INFO - cancel_order called for HT1001
+{"timestamp": "2026-01-22T13:55:59.693660Z", "tool": "cancel_order", "order_id": "HT1001", "result": {"order_id": "HT1001", "status": "Cancelled"}}
+2026-01-22 19:26:19,181 - INFO - end_call tool called - terminating the call
+{"timestamp": "2026-01-22T13:56:19.185577Z", "tool": "end_call", "order_id": "N/A", "result": {"action": "call_ended"}}
+2026-01-23 16:49:56,971 - ERROR - Session error: 'AgentSession' object has no attribute 'wait'
+2026-01-23 16:50:04,292 - INFO - end_call tool called - terminating the call
+{"timestamp": "2026-01-23T11:20:04.293602Z", "tool": "end_call", "order_id": "N/A", "result": {"action": "call_ended"}}
+2026-01-23 16:50:09,687 - INFO - end_call tool called - terminating the call
+{"timestamp": "2026-01-23T11:20:09.688910Z", "tool": "end_call", "order_id": "N/A", "result": {"action": "call_ended"}}
+2026-01-23 16:51:55,056 - ERROR - Session error: 'AgentSession' object has no attribute 'wait'
+2026-01-23 16:52:12,122 - INFO - end_call tool called - terminating the call
+{"timestamp": "2026-01-23T11:22:12.123898Z", "tool": "end_call", "order_id": "N/A", "result": {"action": "call_ended"}}

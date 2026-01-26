@@ -93,10 +93,6 @@ class MongoDBLogger:
         except Exception as e:
             logger.error(f"Failed to fetch order {order_id} from MongoDB: {e}")
             return None
-            self.enabled = False
-        except Exception as e:
-            logger.error(f"MongoDB initialization error: {e}")
-            self.enabled = False
     
     def log_tool_call(
         self,

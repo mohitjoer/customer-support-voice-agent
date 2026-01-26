@@ -3,6 +3,7 @@ import os
 import json
 import re
 from datetime import datetime
+import asyncio
 
 from dotenv import load_dotenv
 from livekit import rtc, api
@@ -29,7 +30,8 @@ load_dotenv(".env.local")
 LIVEKIT_URL = os.getenv("LIVEKIT_URL")
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
-LIVEKIT_TRUNK_ID = os.getenv("LIVEKIT_TUNK_ID")  
+LIVEKIT_TRUNK_ID = os.getenv("LIVEKIT_TUNK_ID")  # Outbound trunk
+LIVEKIT_INBOUND_TRUNK_ID = os.getenv("LIVEKIT_INBOUND_TRUNK_ID")  # Inbound trunk  
 
 # Ensure logs directory exists and configure a dedicated file logger for tool calls
 LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
@@ -82,7 +84,6 @@ def write_tool_log(tool_name: str, order_id: str, result: dict, room_name: str =
         logger.exception("Failed to write tool log")
 
 
-
 def normalize_order_id(raw: str) -> str:
     """Normalize spoken/typed order IDs to canonical uppercase alphanumeric form.
 
@@ -107,6 +108,7 @@ except Exception:
     except Exception:
         ORDERS = {}
 
+
 class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(
@@ -116,7 +118,7 @@ You are a professional voice-based customer support assistant for High Time Stor
 As soon as the user connects, greet the user with a short and polite welcome on behalf of High Time Store.
 
 The user interacts with you through real-time speech.
-Your responses must be short, natural,smooth, and suitable for spoken conversation.
+Your responses must be short, natural, smooth, and suitable for spoken conversation.
 Avoid emojis, symbols, and complex formatting.
 Keep responses pause-friendly and low latency.
 
@@ -151,6 +153,8 @@ Call completion:
 - When the customer's request is fully resolved and they indicate they have no more questions, politely thank them and say goodbye.
 - After saying goodbye, IMMEDIATELY call the end_call tool to disconnect the call.
 - Always end the call after the conversation is complete.
+- If the customer says goodbye, thanks, or indicates they're done, confirm their issue is resolved, say goodbye, and end the call.
+- Do not wait for the customer to explicitly ask you to hang up - proactively end the call when the conversation naturally concludes.
 
 LiveKit behavior:
 - Assume streaming audio input and output.
@@ -160,10 +164,8 @@ LiveKit behavior:
 
 Tone:
 Professional, calm, efficient, and friendly.
-
 """,
         )
-
 
     @function_tool
     async def check_order_status(self, context: RunContext, order_id: str):
@@ -173,7 +175,7 @@ Professional, calm, efficient, and friendly.
         
         # Fetch order from MongoDB
         mongo_logger = get_mongo_logger()
-        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        order = mongo_logger.get_order(key) if mongo_logger and mongo_logger.enabled else ORDERS.get(key)
         
         if not order:
             result = f"No order found with ID {key}."
@@ -196,7 +198,7 @@ Professional, calm, efficient, and friendly.
         
         # Fetch order from MongoDB
         mongo_logger = get_mongo_logger()
-        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        order = mongo_logger.get_order(key) if mongo_logger and mongo_logger.enabled else ORDERS.get(key)
         
         if not order:
             result = f"No order found with ID {key}."
@@ -215,7 +217,7 @@ Professional, calm, efficient, and friendly.
         
         # Fetch order from MongoDB
         mongo_logger = get_mongo_logger()
-        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        order = mongo_logger.get_order(key) if mongo_logger and mongo_logger.enabled else ORDERS.get(key)
         
         if not order:
             result = f"No order found with ID {key}."
@@ -234,7 +236,7 @@ Professional, calm, efficient, and friendly.
         
         # Fetch order from MongoDB
         mongo_logger = get_mongo_logger()
-        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        order = mongo_logger.get_order(key) if mongo_logger and mongo_logger.enabled else ORDERS.get(key)
         
         if not order:
             result = f"No order found with ID {key}."
@@ -253,7 +255,7 @@ Professional, calm, efficient, and friendly.
         
         # Fetch order from MongoDB
         mongo_logger = get_mongo_logger()
-        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        order = mongo_logger.get_order(key) if mongo_logger and mongo_logger.enabled else ORDERS.get(key)
         
         if not order:
             result = f"No order found with ID {key}."
@@ -272,7 +274,7 @@ Professional, calm, efficient, and friendly.
         
         # Fetch order from MongoDB
         mongo_logger = get_mongo_logger()
-        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        order = mongo_logger.get_order(key) if mongo_logger and mongo_logger.enabled else ORDERS.get(key)
 
         if not order:
             result = f"No order found with ID {key}."
@@ -288,7 +290,6 @@ Professional, calm, efficient, and friendly.
         result = {"order_id": key, "status": "Cancelled"}
         write_tool_log("cancel_order", key, result)
         return result
-
 
     @function_tool
     async def modify_order(
@@ -310,7 +311,7 @@ Professional, calm, efficient, and friendly.
         
         # Fetch order from MongoDB (read-only)
         mongo_logger = get_mongo_logger()
-        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        order = mongo_logger.get_order(key) if mongo_logger and mongo_logger.enabled else ORDERS.get(key)
 
         if not order:
             result = f"No order found with ID {key}."
@@ -335,7 +336,6 @@ Professional, calm, efficient, and friendly.
         write_tool_log("modify_order", key, result)
         return result
 
-
     @function_tool
     async def reschedule_delivery(
         self,
@@ -350,7 +350,7 @@ Professional, calm, efficient, and friendly.
         
         # Fetch order from MongoDB (read-only)
         mongo_logger = get_mongo_logger()
-        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        order = mongo_logger.get_order(key) if mongo_logger and mongo_logger.enabled else ORDERS.get(key)
 
         if not order:
             result = f"No order found with ID {key}."
@@ -367,7 +367,6 @@ Professional, calm, efficient, and friendly.
         write_tool_log("reschedule_delivery", key, result)
         return result
 
-
     @function_tool
     async def initiate_refund(
         self,
@@ -381,7 +380,7 @@ Professional, calm, efficient, and friendly.
         
         # Fetch order from MongoDB (read-only)
         mongo_logger = get_mongo_logger()
-        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        order = mongo_logger.get_order(key) if mongo_logger and mongo_logger.enabled else ORDERS.get(key)
 
         if not order:
             result = f"No order found with ID {key}."
@@ -402,7 +401,6 @@ Professional, calm, efficient, and friendly.
         write_tool_log("initiate_refund", key, result)
         return result
 
-
     @function_tool
     async def change_payment_method(
         self,
@@ -417,7 +415,7 @@ Professional, calm, efficient, and friendly.
         
         # Fetch order from MongoDB (read-only)
         mongo_logger = get_mongo_logger()
-        order = mongo_logger.get_order(key) if mongo_logger.enabled else ORDERS.get(key)
+        order = mongo_logger.get_order(key) if mongo_logger and mongo_logger.enabled else ORDERS.get(key)
 
         if not order:
             result = f"No order found with ID {key}."
@@ -440,30 +438,43 @@ Professional, calm, efficient, and friendly.
     @function_tool
     async def end_call(self, context: RunContext):
         """End the call after the conversation is complete. Call this when the customer is satisfied and the conversation is finished."""
-        logger.info("end_call tool called - terminating the call")
-        write_tool_log("end_call", "N/A", {"action": "call_ended"})
-        
-        # Disconnect all remote participants (the caller)
-        room = context.room
-        for participant in room.remote_participants.values():
-            await room.disconnect_participant(participant.identity)
-        
-        return "Call ended successfully."
+        try:
+            write_tool_log("end_call", "N/A", {"action": "call_ended"})
 
+            if getattr(self, "_session", None):
+                await self._session.say(text="धन्यवाद। आपका दिन शुभ हो।", allow_interruptions=False)
+                await asyncio.sleep(2)
+
+            if getattr(self, "room", None) and getattr(self, "api", None):
+                await self.api.room.delete_room(api.DeleteRoomRequest(room=self.room.name))
+
+            return "Call ended"
+        except Exception as e:
+            logger.error(f"❌ End error: {e}")
+            return f"Error: {e}"
+           
+
+
+# Create the server (NO parameters)
 server = AgentServer()
 
 
 def prewarm(proc: JobProcess):
+    """Prewarm function to load VAD model"""
     proc.userdata["vad"] = silero.VAD.load()
 
 
 server.setup_fnc = prewarm
 
+# Configure inbound SIP trunk to accept incoming calls
+server.sip_inbound_trunks = [LIVEKIT_INBOUND_TRUNK_ID] if LIVEKIT_INBOUND_TRUNK_ID else []
 
-@server.rtc_session()
+
+# IMPORTANT: Add agent_name parameter here in the decorator
+@server.rtc_session(agent_name="high-time-store-support")
 async def my_agent(ctx: JobContext):
+    """Main agent session handler"""
     # Logging setup
-    # Add any other context you want in all log entries here
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
@@ -485,7 +496,6 @@ async def my_agent(ctx: JobContext):
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
     )
-
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
